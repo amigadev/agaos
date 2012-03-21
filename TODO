@@ -1,0 +1,2 @@
+	- Incorporate 14-bit remixing functions into audio-routines.
+	- Insert ADPCM-decoder function into AgaOS.

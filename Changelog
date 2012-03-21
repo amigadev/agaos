@@ -1,0 +1,85 @@
+2002-08-08: v0.1.0.7
+
+	:BUGFIX: Various fixes
+
+	:ADDED: Audio-streaming functions have been added, to
+	simplify replaying any kind of audio, as long as it's
+	fed into a buffer.
+
+2002-01-13: v0.1.0.6
+
+	:ADDED: The makefile can now now convert a GCC-compatible
+	link-library by processing with hunk2aout.
+
+	:ADDED: crt0.S (and crt0.o, when compiled) is the official
+	startup-code for GCC targets. This was needed because GCC
+	could place data first in the code-section.
+
+	:BUGFIX: _DummySprite is now a pointer, and chip-memory is
+	allocated for it in _SetupScreen. When linking, GCC silently
+	swallowed the fact that it couldn't handle a chip-BSS
+	section and fetched the incorrect pointer in a different
+	part of the executable (_Cos1024 became _GreyscalePalette
+	in SetupMath()). VLink brought this to my attention.
+
+	:CHANGE: Added rules to all targets. This allows the Makefile
+	to be successfully processed by GNU make, and removes the
+	requirement by the user to have any commercial tools
+	installed.
+
+2002-01-12: v0.1.0.5
+
+	:CHANGE: Vector matrix-routines now use the stack for
+	temporary data instead of BSS-sections. This makes
+	them completely re-entrant, and adds for more
+	possibilities. I also learned how to use LINK/UNLK
+	in the process.
+
+2002-01-05: v0.1.0.3
+
+	:BUGFIX: Fixed a nasty memory-trash in the matrix-
+	routines. One step closer to having the temporary
+	data on the stack...
+
+2002-01-01:
+
+	Happy new year!
+
+2001-12-28: v0.1.0.2
+
+	:CHANGE: Output-directories changed for everything, making it
+	very easy to clean the project.
+
+	:CHANGE: Output-file parser changed(rexx-script passed to PhxAss),
+	allowing for more flexible filenames. Now the .s.o rule is applied
+	for all files.
+
+2001-12-27: v0.1.0.1
+
+	:CHANGE: Object-output directory has been changed to obj/, to remove
+	the clutter from src/
+
+	:ADDED: WB-startup code added
+
+2001-12-10: v0.1.0.0
+
+	:ADDED: FPU 4x4 matrix-math code has been added to the project.
+
+		New functions:
+
+			Matrix_Identity()
+			Matrix_Rotate()
+			Matrix_Translate()
+			Matrix_Scale()
+			Matrix_Multiply()
+			Matrix_Apply()
+			Matrix_Invert()
+
+	:ADDED: FPU detection code has been added, with flags controlling
+	the actions taken.
+
+	:CHANGE: Changed the entire source to compile on a per-function basis
+	  instead of on a per-file basis. This reduces the size of the final
+	  executable quite a bit, and allows for a completely new kind
+	  of functions, as if they aren't used, they won't be included
+	  anyway.

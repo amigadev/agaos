@@ -1,0 +1,19 @@
+
+To use this library with GCC, you need to take a few extra
+steps:
+
+First, you need to run a 'smake gcclib', which will produce
+a link-library of type a.out, named bin/libagaos.a
+
+Then, when compiling and linking your own code, use these
+two lines:
+
+compiling:
+	gcc -c $< -o $@ -I$(AGAOS) -O2 -fstrength-reduce -fomit-frame-pointer
+
+linking:
+	gcc -o $@ $< -L$(AGAOS)/bin -lagaos -s -noixemul -nostartfiles -nostdlib
+
+After that, you should be up and running. Make sure you don't
+use any C-library calls, or things could get nasty. dos.library
+should fill your every need for I/O :)

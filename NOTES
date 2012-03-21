@@ -1,0 +1,17 @@
+
+Debugging
+---------
+
+This debugging assumes that you use PhxLnk or a compatible linker.
+
+The entire link-library is built with line-debugging enabled to assist
+in tracking down enforcer-hits and similar problems.
+
+Debug: Remember to pass KICK1 to PhxLnk when using the debugging-info,
+as programs like 'FindHit' (used to locate enforcer-hits) cannot handle
+the newer kind of RELOC-hunks (like RELOC32SHORT for example) when
+loading the executable.
+
+Release: When building the release executable, you just pass NODEBUG to
+PhxLnk, and all the extra info will be stripped from the final executable.
+

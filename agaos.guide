@@ -1,0 +1,868 @@
+@DATABASE "agaos"
+@MASTER   "Coding:Projects/AgaOS/agaos.doc"
+@REMARK   This file was created by ADtoHT 2.1 on 14-Jan-02 08:54:59
+@REMARK   Do not edit
+@REMARK   ADtoHT is © 1993-1995 Christian Stieber
+
+@NODE MAIN "agaos.doc"
+
+                                    @{b}AgaOS@{ub}
+
+@{"LICENSE" LINK "LICENSE"}
+@{"Overview" LINK "Overview"}
+@{"LICENSE" LINK "LICENSE"}
+
+@{"AttachVBLHook()" LINK "AttachVBLHook"}  @{"BeginFade()" LINK "BeginFade"}         @{"BuildDisplay()" LINK "BuildDisplay"}
+@{"DoFade()" LINK "DoFade"}         @{"FileLoad()" LINK "FileLoad"}          @{"InstallCopper()" LINK "InstallCopper"}
+@{"LoadColors()" LINK "LoadColors"}     @{"Matrix_Apply()" LINK "Matrix_Apply"}      @{"Matrix_Identity()" LINK "Matrix_Identity"}
+@{"Matrix_Invert()" LINK "Matrix_Invert"}  @{"Matrix_Multiply()" LINK "Matrix_Multiply"}   @{"Matrix_Rotate()" LINK "Matrix_Rotate"}
+@{"Matrix_Scale()" LINK "Matrix_Scale"}   @{"Matrix_Translate()" LINK "Matrix_Translate"}  @{"MemAlloc()" LINK "MemAlloc"}
+@{"MemClear()" LINK "MemClear"}       @{"MemCopy()" LINK "MemCopy"}           @{"MemFree()" LINK "MemFree"}
+@{"RemoveVBLHook()" LINK "RemoveVBLHook"}  @{"Shutdown()" LINK "Shutdown"}          @{"Startup()" LINK "Startup"}
+@{"WaitVBL()" LINK "WaitVBL"}        @{"WriteCopperPtrs()" LINK "WriteCopperPtrs"}   @{"WriteCopperptrs()" LINK "WriteCopperPtrs"}
+
+@ENDNODE
+@NODE "LICENSE" "AgaOS/LICENSE (information)"
+
+ Copyright (c) 2001 Jesper Svennevid. All rights reserved.
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions
+ are met:
+
+       Redistributions of source code must retain the above copyright
+ notice, this list of conditions and the following disclaimer.
+
+       Redistributions in binary form must reproduce the above copyright
+ notice, this list of conditions and the following disclaimer in the
+ documentation and/or other materials provided with the distribution.
+
+ THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR
+ IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+ DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+ IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+@ENDNODE
+@NODE "Overview" "AgaOS/Overview (information)"
+
+
+ The intention with AgaOS is that it will supply a very simple
+ interface to the Amiga AGA hardware and leave a relatively small
+ disk-footprint. It might not work out of the box for 4kB-intros,
+ but 40kB-intros should be able to use it with ease. (The smallest
+ executable among the examples deliveres 1896 bytes.)
+
+ AgaOS provides the following:
+
+ * Built as a link-library with each function separated into
+   a separate unit, resulting in that only the functions that are
+   really needed get included in the resulting executable.
+
+ * Completely system-friendly in every aspect except the display-
+   hardware. Only performance-gaining action is raising the priority
+   a small step.
+
+ * A simple, yet powerful copper-list generator.
+
+ * A fast and easy-to-use AGA color-fader.
+
+ * VBL handling which allows user-extendability and a "frame ready"-
+   waiting that does not include busy-waiting.
+
+ * Memory allocation with alignment handling, allocation tracking
+   and overwrite detection.
+
+ * Extensive documentation over every function, providing the user
+   answers to many of the questions they may have without forcing
+   them to read the actual code.
+
+ * Complete library of matrix routines, written in FPU assembler,
+   compatible with all available co-processors.
+
+@ENDNODE
+@NODE "AttachVBLHook" "AgaOS/AttachVBLHook()"
+@{b}
+
+   NAME@{ub}
+       AttachVBLHook - Attach a new routine that will be executed
+              in the vertical blanking period.@{b}
+
+   SYNOPSIS@{ub}
+       success = AttachVBLHook(routine,userdata)
+       d0                     a0       d0
+
+       BOOL AttachVBLHook(void*,ULONG);@{b}
+
+   FUNCTION@{ub}@{b}
+
+   INPUT@{ub}
+       routine - The routine that you want to execute at vertical
+              retrace. It must point to a valid code-segment that
+              ends with a RTS instruction.
+       userdata - This data will be passed into the routine when
+              it executes, and is placed in the register a0.@{b}
+   RESULTS@{ub}
+       success - FALSE if we failed to add to internal VBL hook. This
+              should only happen if there was no memory to allocate.@{b}
+   NOTES@{ub}@{b}
+
+   BUGS@{ub}@{b}
+
+   SEE ALSO@{ub}
+       @{"RemoveVBLHook()" LINK "RemoveVBLHook"}
+
+@ENDNODE
+@NODE "BeginFade" "AgaOS/BeginFade()"
+@{b}
+
+   NAME@{ub}
+       BeginFade - Setup a new color fade@{b}
+
+   SYNOPSIS@{ub}
+       BeginFade(fadestruct,source,dest,first,last,iterations,bplcon3)
+                 a0         a1     a2   d0    d1   d2         d3
+
+       void BeginFade(FadeStructure*, ULONG*, ULONG*, ULONG, ULONG, ULONG,
+                     UWORD);@{b}
+
+   FUNCTION@{ub}
+       This function prepares a FadeStructure for use, filling it with
+       all the needed information to perform a fade from one colour-
+       table to another.@{b}
+
+   INPUT@{ub}
+       fadestruct - Pointer to FadeStructure
+       source - Source palette (up to 256 longwords, $00RrGgBb)
+       dest - Dest Palette (up to 256 longwords, $00RrGgBb)
+       first - First color to start fade(0-255)
+       last - Last color to fade (0-255, >= first)
+       iterations - Number of iterations until fade completes
+       bplcon3 - Mask for BPLCON3 writes@{b}
+
+   RESULTS@{ub}@{b}
+
+   NOTES@{ub}@{b}
+
+   BUGS@{ub}@{b}
+
+   SEE ALSO@{ub}
+       @{"DoFade()" LINK "DoFade"}
+
+@ENDNODE
+@NODE "BuildDisplay" "AgaOS/BuildDisplay()"
+@{b}
+
+   NAME@{ub}
+       BuildDisplay - Generate a copper-list from tagitems passed in.@{b}
+
+   SYNOPSIS@{ub}
+       endcop = BuildDisplay(tagItems, copperlist)
+       D0                     a0       a1
+
+       WORD* BuildDisplay(LONG*, UWORD*);@{b}
+
+   FUNCTION@{ub}@{b}
+
+   INPUT@{ub}
+       tagItems - tag-items describing the new display
+
+       --- Tagitems ---
+
+       CB_Flags       - Global flags
+
+       CB_BplScrollX       - Bitplane horizontal scroll (shires)
+       CB_BplScrollY       - Bitplane vertical scroll (lowres)
+       CB_BplWidth       - Bitplane width (pixels)
+       CB_BplHeight       - Bitplane height (pixels)
+       CB_BplDepth       - Bitplane depth (0-8 (0-256 colors))
+       CB_BplPointer       - Pointer to contiguous bitplanes,
+                       offset (width/8)*height
+       CB_BplIndirect       - Indirect pointer to bitplanes
+       CB_BplFlags       - Bitplane flags
+                     CBBF_DUALPF:       Enable dual playfields
+                     CBBF_PF2PRIO:       Playfield 2 Prio over Playfield 1
+
+       CB_DispPosX       - Display window horizontal position (shires)
+       CB_DispPosY       - Display window vertical position (lowres)
+       CB_DispWidth       - Display window width (shires)
+       CB_DispHeight       - Display window height (lowres)
+       CB_DispFlags       - Display flags
+              CBDF_HIRES:       *** Display will be in hires
+              CBDF_SHIRES:       *** Display will be in super-hires
+              CBDF_LACE:       *** Display will be laced
+              CBDF_HAM:       *** Enable HAM6 or HAM8
+              CBDF_EHB:       *** Enable Extra Half-Brite
+              CBDF_DBLSCAN:       *** Display will be double-scanned
+
+       CB_SpriteFlags       - Sprite flags
+       CB_SprPtr0       - Pointer to sprite 0
+       CB_SprPtr1       - Pointer to sprite 1
+       CB_SprPtr2       - Pointer to sprite 2
+       CB_SprPtr3       - Pointer to sprite 3
+       CB_SprPtr4       - Pointer to sprite 4
+       CB_SprPtr5       - Pointer to sprite 5
+       CB_SprPtr6       - Pointer to sprite 6
+
+       copperlist - Pointer to memory-area that will contain the copper-
+                   list, prefferably in chip-memory if you intend to use it@{b}
+
+   RESULTS@{ub}
+       endcop - Pointer that is just past the final copper-instruction,
+              which happens to be a $ffff,$fffe (wait for End Of Display)@{b}
+
+   NOTES@{ub}@{b}
+
+   BUGS@{ub}@{b}
+
+   SEE ALSO@{ub}
+
+@ENDNODE
+@NODE "DoFade" "AgaOS/DoFade()"
+@{b}
+
+   NAME@{ub}
+       DoFade - Perform a fade-iteration@{b}
+
+   SYNOPSIS@{ub}
+       complete = DoFade(fadestruct)
+       D0                a0
+
+       BOOL DoFade(FadeStructure*);@{b}
+
+   FUNCTION@{ub}@{b}
+
+   INPUT@{ub}
+       fadestruct - Pointer to fade-structure@{b}
+
+   RESULTS@{ub}
+       complete - FALSE if fade is still running, otherwise the
+              fade has completed and anymore calls to this routine
+              will perform nothing.@{b}
+
+   NOTES@{ub}
+       This routine currently uses @{"LoadColors()" LINK "LoadColors"} when writing to the
+       hardware.@{b}
+
+   BUGS@{ub}@{b}
+
+   SEE ALSO@{ub}
+       @{"BeginFade()" LINK "BeginFade"}, @{"LoadColors()" LINK "LoadColors"}
+
+@ENDNODE
+@NODE "FileLoad" "AgaOS/FileLoad()"
+@{b}
+
+   NAME@{ub}
+       FileLoad - Load file into memory@{b}
+
+   SYNOPSIS@{ub}
+       success = FileLoad(filename,destination,amount)
+       d0                 a0           a1              d0
+
+
+       BOOL FileLoad(char* filename, void* destination, LONG amount);@{b}
+
+   FUNCTION@{ub}@{b}
+
+   INPUT@{ub}
+       filename - pointer to filename, null-terminated
+       destination - pointer to destination data-area
+       amount - How much data we should read (-1 to read entire file)@{b}
+
+   RESULTS@{ub}
+       success - FALSE if file-loading failed@{b}
+
+   NOTES@{ub}@{b}
+
+   BUGS@{ub}@{b}
+
+   SEE ALSO@{ub}
+
+@ENDNODE
+@NODE "InstallCopper" "AgaOS/InstallCopper()"
+@{b}
+
+   NAME@{ub}
+       InstallCopper - Instruct AgaOS to use a new copper-list@{b}
+
+   SYNOPSIS@{ub}
+       InstallCopper(coplist)
+                    a0
+
+       void InstallCopper(UWORD*);@{b}
+
+   FUNCTION@{ub}
+       This functions will modify the internal copper-list pointer
+       to point to a new location. This copper-list will be installed
+       on the next vertical retrace.@{b}
+
+   INPUT@{ub}
+       coplist - Pointer to the new copper-list. This list MUST reside
+              in chip-memory, otherwise the effects are undefined.@{b}
+
+   RESULTS@{ub}@{b}
+
+   NOTES@{ub}@{b}
+
+   BUGS@{ub}@{b}
+
+   SEE ALSO@{ub}
+
+@ENDNODE
+@NODE "LoadColors" "AgaOS/LoadColors()"
+@{b}
+
+   NAME@{ub}
+       LoadColors - Load colors into the graphics-hardware@{b}
+
+   SYNOPSIS@{ub}
+       LoadColors(table,first,last,bplcon3)
+                 a0    d0    d1   d2
+
+       void LoadColors(ULONG*, ULONG, ULONG, UWORD);@{b}
+
+   FUNCTION@{ub}@{b}
+
+   INPUT@{ub}
+       table - Pointer to an array with longwords ($00RrGgBb)
+       first - First color to write (0-255)
+       last - Last color to write (0-255, >= first)
+       bplcon3 - Mask for BPLCON3 writes@{b}
+
+   RESULTS@{ub}@{b}
+
+   NOTES@{ub}
+       Colors are reduced to two passes (ECS, AGA) for most
+       efficient memory-footprint.@{b}
+
+   BUGS@{ub}@{b}
+
+   SEE ALSO@{ub}
+
+@ENDNODE
+@NODE "Matrix_Apply" "AgaOS/Matrix_Apply()"
+@{b}
+
+   NAME@{ub}
+       Matrix_Apply - Apply matrix to a list of vector-points.@{b}
+
+   SYNOPSIS@{ub}
+       Matrix_Apply(matrix,input,output,count)
+                    a0     a1    a2     d0
+
+       void Matrix_Apply(Matrix4*,float*,float*,int);@{b}
+
+   FUNCTION@{ub}
+       Completes a full matrix-processing on the vector-points,
+       with transformation and translation.@{b}
+
+   INPUT@{ub}
+       matrix - Full 4x4 matrix.
+       input - Input vector-points. (groups of 3(X,Y,Z) floats)
+       output - Output vector-points. ( -""- )
+       count - number of points to apply matrix to. (count*3*4
+               for byte-size)@{b}
+
+   RESULTS@{ub}@{b}
+
+   NOTES@{ub}
+       This routine requires a FPU. If you intend to allow the
+       program to run on all systems that atleast provide a
+       MC68020, you should not run this.@{b}
+
+   BUGS@{ub}@{b}
+
+   SEE ALSO@{ub}
+
+@ENDNODE
+@NODE "Matrix_Identity" "AgaOS/Matrix_Identity()"
+@{b}
+
+   NAME@{ub}
+       Matrix_Identity - Setting matrix to identity@{b}
+
+   SYNOPSIS@{ub}
+       Matrix_Identity(input)
+                     a0
+
+       void Matrix_Identity(Matrix4*);@{b}
+
+   FUNCTION@{ub}
+       Loads the input-matrix with the values representing a
+       identity matrix:
+
+       [1.0 0.0 0.0 0.0]
+       [0.0 1.0 0.0 0.0]
+       [0.0 0.0 1.0 0.0]
+       [0.0 0.0 0.0 1.0]@{b}
+
+   INPUT@{ub}
+       input - Input matrix that will be loaded with identity.@{b}
+
+   RESULTS@{ub}@{b}
+
+   NOTES@{ub}
+       This routine requires a FPU. If you intend to allow the
+       program to run on all systems that atleast provide a
+       MC68020, you should not run this.@{b}
+
+   BUGS@{ub}@{b}
+
+   SEE ALSO@{ub}
+
+@ENDNODE
+@NODE "Matrix_Invert" "AgaOS/Matrix_Invert()"
+@{b}
+
+   NAME@{ub}
+       @{"Matrix_Apply" LINK "Matrix_Apply"} - Invert matrix.@{b}
+
+   SYNOPSIS@{ub}
+       Matrix_Invert(input,output)
+                     a0    a1
+
+       void Matrix_Invert(Matrix4*,Matrix4*);@{b}
+
+   FUNCTION@{ub}
+       Computes the inverse of the matrix passed in 'input' and
+       writes the result to 'output'.@{b}
+
+   INPUT@{ub}
+       input - Full 4x4 matrix to invert.
+       ouput - Full 4x4 matrix to write the result to.@{b}
+
+   RESULTS@{ub}@{b}
+
+   NOTES@{ub}
+       Input- and output-pointer can be one and the same. The
+       algorithm uses internal buffers.
+
+       Do not use heavily! This is a _MASSIVE_ routine, and it
+       will eat a lot of time.
+
+       This routine requires a FPU. If you intend to allow the
+       program to run on all systems that atleast provide a
+       MC68020, you should not run this.@{b}
+
+   BUGS@{ub}@{b}
+
+   SEE ALSO@{ub}
+
+@ENDNODE
+@NODE "Matrix_Multiply" "AgaOS/Matrix_Multiply()"
+@{b}
+
+   NAME@{ub}
+       Matrix_Multiply - Merge two matrices.@{b}
+
+   SYNOPSIS@{ub}
+       Matrix_Multiply(inputA,inputB,output)
+                       a0     a1     a2
+
+       void Matrix_Multiply(Matrix4*,Matrix4*,Matrix4*);@{b}
+
+   FUNCTION@{ub}
+       Merge actions taken with 'inputA' with the actions in 'inputB'
+       and store result in 'output'.@{b}
+
+   INPUT@{ub}
+       inputA - Input matrix A.
+       inputB - Input matrix B.
+       output - Output matrix.@{b}
+
+   RESULTS@{ub}@{b}
+
+   NOTES@{ub}
+       This routine requires a FPU. If you intend to allow the
+       program to run on all systems that atleast provide a
+       MC68020, you should not run this.@{b}
+
+   BUGS@{ub}@{b}
+
+   SEE ALSO@{ub}
+
+@ENDNODE
+@NODE "Matrix_Rotate" "AgaOS/Matrix_Rotate()"
+@{b}
+
+   NAME@{ub}
+       Matrix_Rotate - Rotate matrix.@{b}
+
+   SYNOPSIS@{ub}
+       Matrix_Rotate(input,output,heading,pitch,bank)
+                     a0    a1     fp0     fp1   fp2
+
+       void @{"Matrix_Identity" LINK "Matrix_Identity"}(Matrix4*,Matrix4*,double,double,double);@{b}
+
+   FUNCTION@{ub}
+       Rotate the matrix passed from 'input' around heading, pitch
+       and bank, and stores it in 'output'.@{b}
+
+   INPUT@{ub}
+       input - Input matrix.
+       output - Output matrix.
+       heading - Heading axis value.
+       pitch - Pitch axis value.
+       bank - Bank axis value.@{b}
+
+   RESULTS@{ub}@{b}
+
+   NOTES@{ub}
+       This routine requires a FPU. If you intend to allow the
+       program to run on all systems that atleast provide a
+       MC68020 but no FPU, you should not run this.@{b}
+
+   BUGS@{ub}
+       FSIN and FCOS are used, even though they are emulated on
+       MC68040+ systems. This behaviour will change.@{b}
+
+   SEE ALSO@{ub}
+
+@ENDNODE
+@NODE "Matrix_Scale" "AgaOS/Matrix_Scale()"
+@{b}
+
+   NAME@{ub}
+       Matrix_Scale - Scale input matrix.@{b}
+
+   SYNOPSIS@{ub}
+       Matrix_Scale(input,output,xscale,yscale,zscale)
+                    a0    a1     fp0    fp1    fp2
+
+       void Matrix_Scale(Matrix4*,Matrix4*,double,double,double);@{b}
+
+   FUNCTION@{ub}
+       Scale the input-matrix into a new size. To perform a uniform
+       scale, pass the same input-value in all three scaling factors.@{b}
+
+   INPUT@{ub}
+       input - Input matrix.
+       output - Output matrix.
+       xcoord - X scaling factor.
+       ycoord - Y scaling factor.
+       zcoord - Z scaling factor.@{b}
+
+   RESULTS@{ub}@{b}
+
+   NOTES@{ub}
+       This routine requires a FPU. If you intend to allow the
+       program to run on all systems that atleast provide a
+       MC68020, you should not run this.@{b}
+
+   BUGS@{ub}@{b}
+
+   SEE ALSO@{ub}
+
+@ENDNODE
+@NODE "Matrix_Translate" "AgaOS/Matrix_Translate()"
+@{b}
+
+   NAME@{ub}
+       Matrix_Translate - Translate matrix into a new coordinate
+       system.@{b}
+
+   SYNOPSIS@{ub}
+       Matrix_Translate(input,output,xcoord,ycoord,zcoord)
+                        a0    a1     fp0    fp1    fp2
+
+       void Matrix_Translate(Matrix4*,Matrix4*,double,double,double);@{b}
+
+   FUNCTION@{ub}
+       Translate the matrixed passed from 'input' into a new
+       coordinate system, and store result in 'output'.@{b}
+
+   INPUT@{ub}
+       input - Input matrix.
+       output - Output matrix.
+       xcoord - X coordinate.
+       ycoord - Y coordinate.
+       zcoord - Z coordinate.@{b}
+
+   RESULTS@{ub}@{b}
+
+   NOTES@{ub}
+       This routine requires a FPU. If you intend to allow the
+       program to run on all systems that atleast provide a
+       MC68020, you should not run this.@{b}
+
+   BUGS@{ub}@{b}
+
+   SEE ALSO@{ub}
+
+@ENDNODE
+@NODE "MemAlloc" "AgaOS/MemAlloc()"
+@{b}
+
+   NAME@{ub}
+       MemAlloc - Allocate a block of memory for use by the application@{b}
+
+   SYNOPSIS@{ub}
+       block = MemAlloc(size,flags)
+       d0               d0   d1
+
+       void* MemAlloc(ULONG size, ULONG flags);@{b}
+
+   FUNCTION@{ub}@{b}
+
+   INPUT@{ub}
+       size - Size of wanted memory-block
+       flags - Requirements of the wanted memory-blockFlags, specifying attri
+        butes of returned memory,
+                      possible flags are: (mask together when using)
+
+                      AAMEMF_CHIP:       Memory returned should reside in in the
+                                    chip memory.
+
+                      AAMEMF_ALIGN:       Memory returned should be aligned to a
+                                    64-bit boundary.
+
+                      AAMEMF_MMU:       Memory returned should be allocated so
+                                    the MMU can be used to modify attributes.
+                                    *** NOT IMPLEMENTED ***@{b}
+
+   RESULTS@{ub}
+       block - Pointer to allocated block, or NULL if failed@{b}
+
+   NOTES@{ub}@{b}
+
+   BUGS@{ub}@{b}
+
+   SEE ALSO@{ub}
+       @{"MemFree()" LINK "MemFree"}
+
+@ENDNODE
+@NODE "MemClear" "AgaOS/MemClear()"
+
+
+@ENDNODE
+@NODE "MemCopy" "AgaOS/MemCopy()"
+
+
+@ENDNODE
+@NODE "MemFree" "AgaOS/MemFree()"
+@{b}
+
+   NAME@{ub}
+       MemFree - Free memory block@{b}
+
+   SYNOPSIS@{ub}
+       MemFree(block)
+              a0
+
+       void MemFree(void* block);@{b}
+
+   FUNCTION@{ub}@{b}
+
+   INPUT@{ub}
+       block - Pointer to block that should be freed.@{b}
+
+   RESULTS@{ub}@{b}
+
+   NOTES@{ub}
+       If the memory-tag in the header has been touched,
+       memory will not be freed and a warning will be
+       displayed when the application exits.@{b}
+
+   BUGS@{ub}@{b}
+
+   SEE ALSO@{ub}
+       @{"MemAlloc()" LINK "MemAlloc"}
+
+@ENDNODE
+@NODE "RemoveVBLHook" "AgaOS/RemoveVBLHook()"
+@{b}
+
+   NAME@{ub}
+       RemoveVBLHook@{b}
+   SYNOPSIS@{ub}
+       RemoveVBLHook(routine)
+                     a0
+
+       void RemoveVBLHook(void*);@{b}
+
+   FUNCTION@{ub}
+       Removes a already added routine from the VBL-hook chain. If
+       the routine is not added, it will do nothing.@{b}
+
+   INPUT@{ub}
+       routine - Routine that should be removed.@{b}
+
+   RESULTS@{ub}@{b}
+
+   NOTES@{ub}
+       If you add the same routine more than once(but with different
+       user-data), they will be removed in reverse order.@{b}
+
+   BUGS@{ub}@{b}
+
+   SEE ALSO@{ub}
+
+@ENDNODE
+@NODE "Shutdown" "AgaOS/Shutdown()"
+@{b}
+
+   NAME@{ub}
+       Shutdown - Restore system and release all resources.@{b}
+
+   SYNOPSIS@{ub}
+       Shutdown()
+
+       void Shutdown(void);@{b}
+
+   FUNCTION@{ub}@{b}
+
+   INPUT@{ub}@{b}
+
+   RESULTS@{ub}@{b}
+
+   NOTES@{ub}@{b}
+
+   BUGS@{ub}@{b}
+
+   SEE ALSO@{ub}
+       @{"Startup()" LINK "Startup"}
+
+@ENDNODE
+@NODE "Startup" "AgaOS/Startup()"
+@{b}
+
+   NAME@{ub}
+       Startup - Setup AgaOS for use@{b}
+
+   SYNOPSIS@{ub}
+       success = Startup(flags)
+       d0                d0
+
+       BOOL Startup(ULONG flags);@{b}
+
+   FUNCTION@{ub}
+       This functions sets up all the sub-systems that are contained
+       within AgaOS and readies them for use.
+
+       The following actions are taken:
+
+              - Workbench messages are handled (and current path modified)
+              - The priority is raised to 1 to avoid all pri 0-tasks
+              - System is validated (SetPatch, AGA, etc)
+              - Default-palettes are generated (White, Greyscale)
+              - Math tables are generated
+              - Needed libraries are opened
+              - Memory-pools are created (chip & public)
+              - Input-handler is installed
+              - The system viewport is reset
+              - VBL interrupt chain is started@{b}
+   INPUT@{ub}
+       flags - Requirements for startup. Possible flags are:
+              (mask together when using)
+
+              AASTRF_FPU:       This program requires that an FPU is
+                            present, and will fail if there is none.@{b}
+
+   RESULTS@{ub}
+       success - FALSE if any error occured. If it did, you can NOT
+              rely on that ANY AgaOS sub-system is set up. Skip
+              directly to end of the program and call @{"Shutdown()" LINK "Shutdown"}.@{b}
+
+   NOTES@{ub}@{b}
+
+   BUGS@{ub}@{b}
+
+   SEE ALSO@{ub}
+       @{"Shutdown()" LINK "Shutdown"}
+
+@ENDNODE
+@NODE "WaitVBL" "AgaOS/WaitVBL()"
+@{b}
+
+   NAME@{ub}
+       WaitVBL - Wait for vertical retrace@{b}
+
+   SYNOPSIS@{ub}
+       WaitVBL()
+
+       void WaitVBL(void);@{b}
+
+   FUNCTION@{ub}
+       This function sets the task into a waiting state that will
+       be triggered when the vertical blanking interrupt has finished
+       executing.@{b}
+
+   INPUT@{ub}@{b}
+
+   RESULTS@{ub}@{b}
+
+   NOTES@{ub}
+       As AmigaOS is still executing in the background, it will be
+       allowed to execute while we are inside this function. This
+       is only a side-effect of exec/Wait(), but it´s what we want.@{b}
+
+   BUGS@{ub}@{b}
+
+   SEE ALSO@{ub}
+
+@ENDNODE
+@NODE "WriteCopperPtrs" "AgaOS/WriteCopperPtrs()"
+@{b}
+
+   NAME@{ub}
+       WriteCopperPtrs - Write pointer-loads copper-style@{b}
+   SYNOPSIS@{ub}
+       endcop = WriteCopperPtrs(coplist,ptr,modulo,count,copptr)
+       d0                      a0      d0  d1     d2    d3
+
+       UWORD* WriteCopperptrs(UWORD*,APTR,ULONG,ULONG,UWORD);@{b}
+
+   FUNCTION@{ub}@{b}
+
+   INPUT@{ub}
+       coplist - Pointer to output copperlist
+       ptr - Base pointer
+       modulo - Distance between each pointer-block
+       count - How many pointers to set
+       copptr - Copper pointer-word to use when loading@{b}
+
+   RESULTS@{ub}
+       endcop - Pointing just past the last copper-instruction written@{b}
+
+   NOTES@{ub}@{b}
+
+   BUGS@{ub}@{b}
+
+   SEE ALSO@{ub}
+
+@ENDNODE
+@NODE "LICENSE" "AgaOS/LICENSE (information)"
+
+ Copyright (c) 2001 Jesper Svennevid. All rights reserved.
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions
+ are met:
+
+       Redistributions of source code must retain the above copyright
+ notice, this list of conditions and the following disclaimer.
+
+       Redistributions in binary form must reproduce the above copyright
+ notice, this list of conditions and the following disclaimer in the
+ documentation and/or other materials provided with the distribution.
+
+ THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR
+ IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+ DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+ IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+@ENDNODE
